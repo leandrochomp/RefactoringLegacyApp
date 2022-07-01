@@ -2,6 +2,7 @@ using System;
 using AutoFixture;
 using FluentAssertions;
 using NSubstitute;
+using Refactoring.LegacyService.CreditProviders;
 using Refactoring.LegacyService.DataAccess;
 using Refactoring.LegacyService.Models;
 using Refactoring.LegacyService.Repositories;
@@ -23,8 +24,9 @@ namespace Refactoring.LegacyService.Tests
         public CandidateServiceTests()
         {
             _sut = new CandidateService(_positionRepository,
-                                        _candidateCreditService,
-                                        _candidateDataAccess, new CandidateValidator(_dateTimeProvider));
+                                        _candidateDataAccess, 
+                                        new CandidateValidator(_dateTimeProvider),
+                                        new CreditProviderFactory(_candidateCreditService));
         }
         [Fact]
         public void AddCandidate_ShouldCreateCandidate_WhenAllParametersAreValid()

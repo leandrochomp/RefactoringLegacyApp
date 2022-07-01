@@ -1,4 +1,5 @@
 ﻿using System;
+using Refactoring.LegacyService.CreditProviders;
 using Refactoring.LegacyService.DataAccess;
 using Refactoring.LegacyService.Models;
 using Refactoring.LegacyService.Repositories;
@@ -10,27 +11,27 @@ namespace Refactoring.LegacyService
     public class CandidateService
     {
         private readonly IPositionRepository _positionRepository;
-        private readonly ICandidateCreditService _candidateCreditService;
         private readonly ICandidateDataAccess _candidateDataAccess;
         private readonly CandidateValidator _candidateValidator;
+        private readonly CreditProviderFactory _creditProviderFactory;
 
         public CandidateService(
             IPositionRepository positionRepository,
-            ICandidateCreditService candidateCreditService,
             ICandidateDataAccess candidateDataAccess,
-            CandidateValidator candidateValidator)
+            CandidateValidator candidateValidator,
+            CreditProviderFactory creditProviderFactory)
         {
             _positionRepository = positionRepository;
-            _candidateCreditService = candidateCreditService;
             _candidateDataAccess = candidateDataAccess;
             _candidateValidator = candidateValidator;
+            _creditProviderFactory = creditProviderFactory;
         }
 
         public CandidateService() :
             this(new PositionRepository(),
-                 new CandidateCreditServiceClient(),
                  new CandidateDataAccessProxy(),
-                 new CandidateValidator(new DateTimeProvider()))
+                 new CandidateValidator(new DateTimeProvider()),
+                 new CreditProviderFactory(new CandidateCreditServiceClient()))
         {
         }
 
@@ -52,27 +53,7 @@ namespace Refactoring.LegacyService
                 Surname = surname
             };
 
-            if (position.Name == "SecuritySpecialist")
-            {
-                // No credit check
-                candidate.RequireCreditCheck = false;
-
-            }
-            else if (position.Name == "FeatureDeveloper")
-            {
-                // Do credit check and double credit
-                candidate.RequireCreditCheck = true;
-                var credit = _candidateCreditService.GetCredit(candidate.Firstname, candidate.Surname, candidate.DateOfBirth);
-                credit *= 2;
-                candidate.Credit = credit;
-            }
-            else
-            {
-                // Do credit check
-                candidate.RequireCreditCheck = true;
-                var credit = _candidateCreditService.GetCredit(candidate.Firstname, candidate.Surname, candidate.DateOfBirth);
-                candidate.Credit = credit;
-            }
+            ApplyCredits(position, candidate);
 
             if (CandidateValidator.HasCreditCheckAndLimitIsLess500(candidate))
             {
@@ -81,6 +62,14 @@ namespace Refactoring.LegacyService
 
             _candidateDataAccess.AddCandidate(candidate);
             return true;
+        }
+
+        private void ApplyCredits(Position position, Candidate candidate)
+        {
+            var provider = _creditProviderFactory.GetProviderByPositionName(position.Name);
+            var (requireCreditCheck, credit) = provider.GetCredits(candidate);
+            candidate.RequireCreditCheck = requireCreditCheck;
+            candidate.Credit = credit;
         }
 
         private bool CandidateProvidedDataIsValid(string firname, string surname, string email, DateTime dateOfBirth)
