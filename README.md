@@ -20,5 +20,5 @@ You are asked to refactor the project `LegacyService`. Assuming the logic is per
 
 ## Resources
 Nick Chapsas - The refactoring test
-- https://www.youtube.com/watch?v=U3QvTaw224o&t=161s
+- https://www.youtube.com/watch?v=U3QvTaw224o
 - https://www.youtube.com/watch?v=Yd4GnWeEkIY
