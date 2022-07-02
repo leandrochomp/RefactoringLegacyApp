@@ -3,57 +3,40 @@ using Refactoring.LegacyService.DataAccess;
 using Refactoring.LegacyService.Models;
 using Refactoring.LegacyService.Repositories;
 using Refactoring.LegacyService.Services;
+using Refactoring.LegacyService.Validators;
 
 namespace Refactoring.LegacyService
 {
     public class CandidateService
     {
-        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IPositionRepository _positionRepository;
         private readonly ICandidateCreditService _candidateCreditService;
         private readonly ICandidateDataAccess _candidateDataAccess;
+        private readonly CandidateValidator _candidateValidator;
 
         public CandidateService(
-            IDateTimeProvider dateTimeProvider,
             IPositionRepository positionRepository,
             ICandidateCreditService candidateCreditService,
-            ICandidateDataAccess candidateDataAccess)
+            ICandidateDataAccess candidateDataAccess,
+            CandidateValidator candidateValidator)
         {
-            _dateTimeProvider = dateTimeProvider;
             _positionRepository = positionRepository;
             _candidateCreditService = candidateCreditService;
             _candidateDataAccess = candidateDataAccess;
+            _candidateValidator = candidateValidator;
         }
 
         public CandidateService() :
-            this(new DateTimeProvider(),
-                 new PositionRepository(),
+            this(new PositionRepository(),
                  new CandidateCreditServiceClient(),
-                 new CandidateDataAccessProxy())
+                 new CandidateDataAccessProxy(),
+                 new CandidateValidator(new DateTimeProvider()))
         {
         }
 
-        public bool AddCandidate(string firstName, string surName, string email, DateTime dateOfBirth, int positionId)
+        public bool AddCandidate(string firname, string surname, string email, DateTime dateOfBirth, int positionId)
         {
-            if (string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(surName))
-            {
-                return false;
-            }
-
-            if (!email.Contains("@") || !email.Contains("."))
-            {
-                return false;
-            }
-
-            var now = _dateTimeProvider.DateTimeNow;
-            int age = now.Year - dateOfBirth.Year;
-
-            if (now.Month < dateOfBirth.Month || (now.Month == dateOfBirth.Month && now.Day < dateOfBirth.Day))
-            {
-                age--;
-            }
-
-            if (age < 18)
+            if (!CandidateProvidedDataIsValid(firname, surname, email, dateOfBirth))
             {
                 return false;
             }
@@ -65,8 +48,8 @@ namespace Refactoring.LegacyService
                 Position = position,
                 DateOfBirth = dateOfBirth,
                 EmailAddress = email,
-                Firstname = firstName,
-                Surname = surName
+                Firstname = firname,
+                Surname = surname
             };
 
             if (position.Name == "SecuritySpecialist")
@@ -91,12 +74,31 @@ namespace Refactoring.LegacyService
                 candidate.Credit = credit;
             }
 
-            if (candidate.RequireCreditCheck && candidate.Credit < 500)
+            if (CandidateValidator.HasCreditCheckAndLimitIsLess500(candidate))
             {
                 return false;
             }
 
             _candidateDataAccess.AddCandidate(candidate);
+            return true;
+        }
+
+        private bool CandidateProvidedDataIsValid(string firname, string surname, string email, DateTime dateOfBirth)
+        {
+            if (!CandidateValidator.HasValidFullName(firname, surname))
+            {
+                return false;
+            }
+
+            if (!CandidateValidator.HasValidEmail(email))
+            {
+                return false;
+            }
+
+            if (!_candidateValidator.IsAtLeast21YearsOld(dateOfBirth))
+            {
+                return false;
+            }
 
             return true;
         }

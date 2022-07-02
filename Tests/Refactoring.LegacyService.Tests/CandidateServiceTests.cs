@@ -6,6 +6,7 @@ using Refactoring.LegacyService.DataAccess;
 using Refactoring.LegacyService.Models;
 using Refactoring.LegacyService.Repositories;
 using Refactoring.LegacyService.Services;
+using Refactoring.LegacyService.Validators;
 using Xunit;
 
 namespace Refactoring.LegacyService.Tests
@@ -21,10 +22,9 @@ namespace Refactoring.LegacyService.Tests
 
         public CandidateServiceTests()
         {
-            _sut = new CandidateService(_dateTimeProvider,
-                                        _positionRepository,
+            _sut = new CandidateService(_positionRepository,
                                         _candidateCreditService,
-                                        _candidateDataAccess);
+                                        _candidateDataAccess, new CandidateValidator(_dateTimeProvider));
         }
         [Fact]
         public void AddCandidate_ShouldCreateCandidate_WhenAllParametersAreValid()
